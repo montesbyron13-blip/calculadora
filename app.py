@@ -6,27 +6,42 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Cierre de Caja", page_icon="💰", layout="centered")
 
-# --- Inicializar estado de sesión (solo una vez) ---
+# --- INICIALIZACIÓN SEGURA DE CADA CLAVE ---
+# Local
 if 'local_com_fisicas' not in st.session_state:
     st.session_state.local_com_fisicas = 0.0
+if 'local_pos' not in st.session_state:
     st.session_state.local_pos = 0.0
+if 'local_caja_ini' not in st.session_state:
     st.session_state.local_caja_ini = 0.0
+if 'local_salidas' not in st.session_state:
     st.session_state.local_salidas = 0.0
+if 'local_efectivo_cont' not in st.session_state:
     st.session_state.local_efectivo_cont = 0.0
+if 'local_depositos' not in st.session_state:
     st.session_state.local_depositos = 0.0
 
+# Total
+if 'total_pos_ventas' not in st.session_state:
     st.session_state.total_pos_ventas = 0.0
+if 'total_fondo_ini' not in st.session_state:
     st.session_state.total_fondo_ini = 0.0
+if 'total_salidas' not in st.session_state:
     st.session_state.total_salidas = 0.0
+if 'total_caja_contada' not in st.session_state:
     st.session_state.total_caja_contada = 0.0
+if 'total_pedidos_ya' not in st.session_state:
     st.session_state.total_pedidos_ya = 0.0
+if 'total_depositos' not in st.session_state:
     st.session_state.total_depositos = 0.0
 
-    # Banderas de reseteo
+# Banderas de reset
+if 'reset_local_flag' not in st.session_state:
     st.session_state.reset_local_flag = False
+if 'reset_total_flag' not in st.session_state:
     st.session_state.reset_total_flag = False
 
-# --- Procesar reseteos (al principio del script) ---
+# --- PROCESAR RESETS ---
 if st.session_state.reset_local_flag:
     st.session_state.local_com_fisicas = 0.0
     st.session_state.local_pos = 0.0
@@ -35,7 +50,7 @@ if st.session_state.reset_local_flag:
     st.session_state.local_efectivo_cont = 0.0
     st.session_state.local_depositos = 0.0
     st.session_state.reset_local_flag = False
-    st.rerun()  # Fuerza una nueva ejecución para que los widgets se actualicen
+    st.rerun()
 
 if st.session_state.reset_total_flag:
     st.session_state.total_pos_ventas = 0.0
@@ -47,7 +62,7 @@ if st.session_state.reset_total_flag:
     st.session_state.reset_total_flag = False
     st.rerun()
 
-# --- Funciones de generación de imagen y ticket (sin cambios) ---
+# --- FUNCIONES DE GENERACIÓN DE IMAGEN Y TICKET (sin cambios, pero las incluyo completas) ---
 def generar_imagen_resultados(datos_local, datos_total):
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     fig, ax = plt.subplots(figsize=(6, 10))
@@ -127,7 +142,7 @@ def generar_html_ticket(datos_local, datos_total):
         <div class="center"><b>💰 CIERRE DE CAJA</b><br/>{now}</div>
         <div class="line"></div>
         <div class="title">🏪 CIERRE LOCAL</div>
-        <tr>
+        <table>
             <tr><td>Comandas físicas:</td><td class="right">{datos_local['com_fisicas']:,.2f}</td></tr>
             <tr><td>POS:</td><td class="right">{datos_local['pos']:,.2f}</td></tr>
             <tr><td>Caja inicial:</td><td class="right">{datos_local['caja_ini']:,.2f}</td></tr>
@@ -166,11 +181,11 @@ def generar_html_ticket(datos_local, datos_total):
     """
     return html
 
-# --- Interfaz de usuario ---
+# --- INTERFAZ DE USUARIO ---
 st.title("💰 Cierre de Caja")
 st.caption(f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-# ==================== SECCIÓN LOCAL ====================
+# SECCIÓN LOCAL
 st.subheader("🏪 Cierre de Caja Local")
 col1, col2 = st.columns(2)
 
@@ -201,7 +216,7 @@ r2.metric("Estado final en caja", f"{estado_final:,.2f}")
 
 st.divider()
 
-# ==================== SECCIÓN TOTAL ====================
+# SECCIÓN TOTAL
 st.subheader("💳 Cierre de Caja Total (Físico + Digital)")
 col3, col4 = st.columns(2)
 
@@ -232,7 +247,7 @@ r4.metric("Estado final de cuentas", f"{estado_cuentas:,.2f}")
 
 st.divider()
 
-# ==================== EXPORTAR DATOS ====================
+# EXPORTAR
 st.subheader("📤 Exportar datos")
 
 datos_local = {
@@ -248,7 +263,6 @@ datos_total = {
     'diferencia': diferencia_total, 'estado_cuentas': estado_cuentas
 }
 
-# Imagen PNG
 fig = generar_imagen_resultados(datos_local, datos_total)
 buf = io.BytesIO()
 fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
@@ -257,7 +271,6 @@ st.download_button(label="📸 Descargar imagen PNG (para WhatsApp)", data=buf,
                    file_name=f"cierre_caja_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png", mime="image/png")
 plt.close(fig)
 
-# Impresión ticket
 st.subheader("🖨️ Imprimir ticket térmico")
 html_ticket = generar_html_ticket(datos_local, datos_total)
 b64 = base64.b64encode(html_ticket.encode()).decode()
