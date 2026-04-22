@@ -74,10 +74,9 @@ if st.session_state.reset_total_flag:
 def get_fecha_hora_actual():
     """Devuelve un datetime con la fecha seleccionada y la hora actual de Guatemala"""
     ahora = datetime.now(GUATE_TZ)
-    # Combinar fecha seleccionada con la hora actual
     return datetime.combine(st.session_state.fecha_cierre, ahora.time()).replace(tzinfo=GUATE_TZ)
 
-# --- FUNCIONES DE GENERACIÓN DE IMAGEN Y TICKET (actualizadas para usar fecha/hora personalizada) ---
+# --- FUNCIONES DE GENERACIÓN DE IMAGEN Y TICKET ---
 def generar_imagen_resultados(datos_local, datos_total, fecha_hora):
     now_str = fecha_hora.strftime("%d/%m/%Y %H:%M:%S")
     fig, ax = plt.subplots(figsize=(6, 10))
@@ -197,9 +196,18 @@ def generar_html_ticket(datos_local, datos_total, fecha_hora):
     return html
 
 # --- INTERFAZ DE USUARIO ---
+
+# ========== RELOJ EN VIVO (PARTE SUPERIOR) ==========
+try:
+    with open("reloj.html", "r", encoding="utf-8") as f:
+        reloj_html = f.read()
+    st.components.v1.html(reloj_html, height=80)
+except FileNotFoundError:
+    st.warning("Archivo reloj.html no encontrado. El reloj no se mostrará.")
+
 st.title("💰 Cierre de Caja")
 
-# Selector de fecha (calendario) y zona horaria
+# Selector de fecha y zona horaria
 col_fecha, col_zona = st.columns([3, 1])
 with col_fecha:
     fecha_seleccionada = st.date_input(
@@ -214,9 +222,9 @@ with col_fecha:
 with col_zona:
     st.metric("🕒 Zona horaria", "Guatemala (GMT-6)")
 
-# Mostrar fecha y hora actual combinada
+# Mostrar fecha y hora actual combinada (solo informativo, pero el reloj ya da la hora)
 fecha_hora_actual = get_fecha_hora_actual()
-st.caption(f"📅 {fecha_hora_actual.strftime('%d/%m/%Y %H:%M:%S')} (hora actual de Guatemala, fecha seleccionada)")
+st.caption(f"📅 Hora actual (servidor): {fecha_hora_actual.strftime('%d/%m/%Y %H:%M:%S')} (UTC-6)")
 
 # --- SECCIÓN LOCAL ---
 st.subheader("🏪 Cierre de Caja Local")
@@ -283,7 +291,6 @@ st.divider()
 # --- EXPORTAR DATOS ---
 st.subheader("📤 Exportar datos")
 
-# Preparar diccionarios
 datos_local = {
     'com_fisicas': com_fisicas, 'pos': pos, 'caja_ini': caja_ini, 'salidas': salidas,
     'efectivo_cont': efectivo_cont, 'depositos': depositos,
@@ -297,8 +304,9 @@ datos_total = {
     'diferencia': diferencia_total, 'estado_cuentas': estado_cuentas
 }
 
-# Generar imagen PNG con la fecha/hora seleccionada
 fecha_hora_export = get_fecha_hora_actual()
+
+# Imagen PNG
 fig = generar_imagen_resultados(datos_local, datos_total, fecha_hora_export)
 buf = io.BytesIO()
 fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
@@ -307,7 +315,7 @@ st.download_button(label="📸 Descargar imagen PNG (para WhatsApp)", data=buf,
                    file_name=f"cierre_caja_{fecha_hora_export.strftime('%Y%m%d_%H%M%S')}.png", mime="image/png")
 plt.close(fig)
 
-# Imprimir ticket térmico
+# Ticket térmico
 st.subheader("🖨️ Imprimir ticket térmico")
 html_ticket = generar_html_ticket(datos_local, datos_total, fecha_hora_export)
 b64 = base64.b64encode(html_ticket.encode()).decode()
