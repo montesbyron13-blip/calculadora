@@ -1,0 +1,24 @@
+<div id="reloj" style="font-size: 1.2rem; font-family: monospace; text-align: center; background-color: #f0f2f6; padding: 8px; border-radius: 10px; margin-bottom: 10px;">
+    Cargando hora...
+</div>
+<script>
+function actualizarReloj() {
+    fetch('https://worldtimeapi.org/api/timezone/America/Guatemala')
+        .then(response => response.json())
+        .then(data => {
+            const fechaHora = new Date(data.datetime);
+            const opciones = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            const formato = fechaHora.toLocaleString('es-GT', opciones);
+            document.getElementById('reloj').innerHTML = '🕒 ' + formato + ' (Guatemala)';
+        })
+        .catch(() => {
+            // Fallback con hora local del navegador ajustada a GMT-6
+            const ahora = new Date();
+            const guate = new Date(ahora.getTime() - (ahora.getTimezoneOffset() * 60000) - (6 * 3600000));
+            const opciones = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            document.getElementById('reloj').innerHTML = '🕒 ' + guate.toLocaleString('es-GT', opciones) + ' (aprox.)';
+        });
+}
+actualizarReloj();
+setInterval(actualizarReloj, 1000);
+</script>
