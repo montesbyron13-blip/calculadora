@@ -1,13 +1,21 @@
 import streamlit as st
 import io
 import base64
-from datetime import datetime
+from datetime import datetime, time
+import pytz
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Cierre de Caja", page_icon="💰", layout="centered")
 
-# --- INICIALIZACIÓN SEGURA DE CADA CLAVE ---
-# Local
+# Zona horaria de Guatemala (GMT-6, sin horario de verano)
+GUATE_TZ = pytz.timezone('America/Guatemala')
+
+# --- INICIALIZACIÓN DE SESSION STATE ---
+# Fecha seleccionada (por defecto, hoy en zona horaria de Guatemala)
+if 'fecha_cierre' not in st.session_state:
+    st.session_state.fecha_cierre = datetime.now(GUATE_TZ).date()
+
+# Valores locales
 if 'local_com_fisicas' not in st.session_state:
     st.session_state.local_com_fisicas = 0.0
 if 'local_pos' not in st.session_state:
@@ -21,7 +29,7 @@ if 'local_efectivo_cont' not in st.session_state:
 if 'local_depositos' not in st.session_state:
     st.session_state.local_depositos = 0.0
 
-# Total
+# Valores totales
 if 'total_pos_ventas' not in st.session_state:
     st.session_state.total_pos_ventas = 0.0
 if 'total_fondo_ini' not in st.session_state:
@@ -62,15 +70,22 @@ if st.session_state.reset_total_flag:
     st.session_state.reset_total_flag = False
     st.rerun()
 
-# --- FUNCIONES DE GENERACIÓN DE IMAGEN Y TICKET (sin cambios, pero las incluyo completas) ---
-def generar_imagen_resultados(datos_local, datos_total):
-    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+# --- FUNCIÓN PARA OBTENER FECHA Y HORA ACTUAL COMBINADA CON LA FECHA SELECCIONADA ---
+def get_fecha_hora_actual():
+    """Devuelve un datetime con la fecha seleccionada y la hora actual de Guatemala"""
+    ahora = datetime.now(GUATE_TZ)
+    # Combinar fecha seleccionada con la hora actual
+    return datetime.combine(st.session_state.fecha_cierre, ahora.time()).replace(tzinfo=GUATE_TZ)
+
+# --- FUNCIONES DE GENERACIÓN DE IMAGEN Y TICKET (actualizadas para usar fecha/hora personalizada) ---
+def generar_imagen_resultados(datos_local, datos_total, fecha_hora):
+    now_str = fecha_hora.strftime("%d/%m/%Y %H:%M:%S")
     fig, ax = plt.subplots(figsize=(6, 10))
     ax.axis('off')
     ax.set_facecolor('#f0f0f0')
     fig.patch.set_facecolor('#f0f0f0')
     ax.text(0.5, 0.98, "💰 CIERRE DE CAJA", transform=ax.transAxes, fontsize=16, fontweight='bold', ha='center')
-    ax.text(0.5, 0.94, now, transform=ax.transAxes, fontsize=10, ha='center')
+    ax.text(0.5, 0.94, now_str, transform=ax.transAxes, fontsize=10, ha='center')
     y = 0.88
     ax.text(0.05, y, "🏪 CIERRE LOCAL", transform=ax.transAxes, fontsize=12, fontweight='bold')
     y -= 0.04
@@ -124,8 +139,8 @@ def generar_imagen_resultados(datos_local, datos_total):
     plt.tight_layout()
     return fig
 
-def generar_html_ticket(datos_local, datos_total):
-    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+def generar_html_ticket(datos_local, datos_total, fecha_hora):
+    now_str = fecha_hora.strftime("%d/%m/%Y %H:%M:%S")
     html = f"""
     <html>
     <head><meta charset="UTF-8"><style>
@@ -139,7 +154,7 @@ def generar_html_ticket(datos_local, datos_total):
         .title {{ font-weight: bold; font-size: 14px; margin: 5px 0; }}
     </style></head>
     <body>
-        <div class="center"><b>💰 CIERRE DE CAJA</b><br/>{now}</div>
+        <div class="center"><b>💰 CIERRE DE CAJA</b><br/>{now_str}</div>
         <div class="line"></div>
         <div class="title">🏪 CIERRE LOCAL</div>
         <table>
@@ -168,7 +183,7 @@ def generar_html_ticket(datos_local, datos_total):
             <tr><td>Depósitos:</td><td class="right">{datos_total['depositos']:,.2f}</td></tr>
         </table>
         <div class="line"></div>
-        <tr>
+        <table>
             <tr><td><b>Ventas totales:</b></td><td class="right"><b>{datos_total['ventas_totales']:,.2f}</b></td></tr>
             <tr><td><b>Caja ideal:</b></td><td class="right"><b>{datos_total['caja_ideal']:,.2f}</b></td></tr>
             <tr><td><b>Diferencia:</b></td><td class="right"><b>{datos_total['diferencia']:,.2f}</b></td></tr>
@@ -183,9 +198,27 @@ def generar_html_ticket(datos_local, datos_total):
 
 # --- INTERFAZ DE USUARIO ---
 st.title("💰 Cierre de Caja")
-st.caption(f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-# SECCIÓN LOCAL
+# Selector de fecha (calendario) y zona horaria
+col_fecha, col_zona = st.columns([3, 1])
+with col_fecha:
+    fecha_seleccionada = st.date_input(
+        "📅 Fecha del cierre",
+        value=st.session_state.fecha_cierre,
+        key="fecha_cierre_input",
+        help="Selecciona la fecha a la que corresponde este cierre (útil para registrar cierres anteriores)"
+    )
+    if fecha_seleccionada != st.session_state.fecha_cierre:
+        st.session_state.fecha_cierre = fecha_seleccionada
+        st.rerun()
+with col_zona:
+    st.metric("🕒 Zona horaria", "Guatemala (GMT-6)")
+
+# Mostrar fecha y hora actual combinada
+fecha_hora_actual = get_fecha_hora_actual()
+st.caption(f"📅 {fecha_hora_actual.strftime('%d/%m/%Y %H:%M:%S')} (hora actual de Guatemala, fecha seleccionada)")
+
+# --- SECCIÓN LOCAL ---
 st.subheader("🏪 Cierre de Caja Local")
 col1, col2 = st.columns(2)
 
@@ -216,7 +249,7 @@ r2.metric("Estado final en caja", f"{estado_final:,.2f}")
 
 st.divider()
 
-# SECCIÓN TOTAL
+# --- SECCIÓN TOTAL ---
 st.subheader("💳 Cierre de Caja Total (Físico + Digital)")
 col3, col4 = st.columns(2)
 
@@ -247,9 +280,10 @@ r4.metric("Estado final de cuentas", f"{estado_cuentas:,.2f}")
 
 st.divider()
 
-# EXPORTAR
+# --- EXPORTAR DATOS ---
 st.subheader("📤 Exportar datos")
 
+# Preparar diccionarios
 datos_local = {
     'com_fisicas': com_fisicas, 'pos': pos, 'caja_ini': caja_ini, 'salidas': salidas,
     'efectivo_cont': efectivo_cont, 'depositos': depositos,
@@ -263,18 +297,21 @@ datos_total = {
     'diferencia': diferencia_total, 'estado_cuentas': estado_cuentas
 }
 
-fig = generar_imagen_resultados(datos_local, datos_total)
+# Generar imagen PNG con la fecha/hora seleccionada
+fecha_hora_export = get_fecha_hora_actual()
+fig = generar_imagen_resultados(datos_local, datos_total, fecha_hora_export)
 buf = io.BytesIO()
 fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
 buf.seek(0)
 st.download_button(label="📸 Descargar imagen PNG (para WhatsApp)", data=buf,
-                   file_name=f"cierre_caja_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png", mime="image/png")
+                   file_name=f"cierre_caja_{fecha_hora_export.strftime('%Y%m%d_%H%M%S')}.png", mime="image/png")
 plt.close(fig)
 
+# Imprimir ticket térmico
 st.subheader("🖨️ Imprimir ticket térmico")
-html_ticket = generar_html_ticket(datos_local, datos_total)
+html_ticket = generar_html_ticket(datos_local, datos_total, fecha_hora_export)
 b64 = base64.b64encode(html_ticket.encode()).decode()
-st.markdown(f'<a href="data:text/html;base64,{b64}" download="ticket_cierre.html">📄 Descargar HTML (para imprimir después)</a>', unsafe_allow_html=True)
+st.markdown(f'<a href="data:text/html;base64,{b64}" download="ticket_cierre_{fecha_hora_export.strftime("%Y%m%d_%H%M%S")}.html">📄 Descargar HTML (para imprimir después)</a>', unsafe_allow_html=True)
 st.components.v1.html(f"""
 <button onclick="window.print()" style="padding:10px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">
     🖨️ Imprimir ticket ahora
