@@ -70,7 +70,8 @@ def generar_imagen_resultados(datos_local, datos_total):
     y -= 0.03
     ax.text(0.05, y, f"📊 Efectivo ideal: {datos_local['efectivo_ideal']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold')
     y -= 0.03
-    ax.text(0.05, y, f"⚠️ Diferencia: {datos_local['diferencia']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold', color='red' if datos_local['diferencia'] != 0 else 'green')
+    diferencia_color = 'red' if datos_local['diferencia'] != 0 else 'green'
+    ax.text(0.05, y, f"⚠️ Diferencia: {datos_local['diferencia']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold', color=diferencia_color)
     y -= 0.03
     ax.text(0.05, y, f"💵 Estado final caja: {datos_local['estado_final']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold')
     
@@ -98,7 +99,8 @@ def generar_imagen_resultados(datos_local, datos_total):
     y -= 0.03
     ax.text(0.05, y, f"📊 Caja ideal: {datos_total['caja_ideal']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold')
     y -= 0.03
-    ax.text(0.05, y, f"⚠️ Diferencia: {datos_total['diferencia']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold', color='red' if datos_total['diferencia'] != 0 else 'green')
+    dif_total_color = 'red' if datos_total['diferencia'] != 0 else 'green'
+    ax.text(0.05, y, f"⚠️ Diferencia: {datos_total['diferencia']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold', color=dif_total_color)
     y -= 0.03
     ax.text(0.05, y, f"🏦 Estado cuentas: {datos_total['estado_cuentas']:,.2f}", transform=ax.transAxes, fontsize=10, fontweight='bold')
     
@@ -126,10 +128,11 @@ with col2:
     pos = st.number_input("POS", value=st.session_state.local_pos, step=0.01, format="%.2f", key="local_pos")
     salidas = st.number_input("Salidas de dinero", value=st.session_state.local_salidas, step=0.01, format="%.2f", key="local_salidas")
 
+# Botón reset local (sin rerun)
 if st.button("🔄 Resetear Local", key="reset_local"):
     reset_local()
-    st.rerun()
 
+# Cálculos locales
 ventas_efectivo = com_fisicas - pos
 efectivo_ideal = ventas_efectivo + caja_ini - salidas
 diferencia = efectivo_cont - efectivo_ideal
@@ -157,9 +160,9 @@ with col4:
     salidas_total = st.number_input("Salidas de dinero (total)", value=st.session_state.total_salidas, step=0.01, format="%.2f", key="total_salidas")
     pedidos_ya = st.number_input("Pedidos Ya", value=st.session_state.total_pedidos_ya, step=0.01, format="%.2f", key="total_pedidos_ya")
 
+# Botón reset total (sin rerun)
 if st.button("🔄 Resetear Total", key="reset_total"):
     reset_total()
-    st.rerun()
 
 ventas_totales = pos_ventas + pedidos_ya
 caja_ideal = pos_ventas + fondo_ini + pedidos_ya - salidas_total
